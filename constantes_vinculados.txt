@@ -1,0 +1,83 @@
+package com.example.geinzwork.constantesGeneral
+
+import android.content.Context
+import android.os.Build
+import android.util.Log
+import android.widget.Toast
+import com.geinzz.geinzwork.constantesGeneral.mostrarFechaDialog_horaDialog
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FirebaseFirestore
+
+object constantes_vinculados {
+    fun encotrar_user(idRegistrado: String, callback: (Boolean, CollectionReference?) -> Unit) {
+        val db = FirebaseFirestore.getInstance()
+        Log.d("DEBUG", "Buscando usuario con ID: $idRegistrado")
+
+        val trabajadorCollection = db.collection("Trabajadores_Usuarios_Drivers")
+            .document("trabajadores").collection("trabajadores")
+
+        val usuarioCollection = db.collection("Trabajadores_Usuarios_Drivers")
+            .document("usuarios").collection("usuarios")
+
+        trabajadorCollection.whereEqualTo("id", idRegistrado).get()
+            .addOnSuccessListener { trabajadorResult ->
+                if (!trabajadorResult.isEmpty) {
+                    Log.d("DEBUG", "Usuario encontrado en 'trabajadores'")
+                    callback(true, trabajadorCollection)
+                } else {
+                    Log.d("DEBUG", "No se encontró en 'trabajadores', buscando en 'usuarios'")
+                    usuarioCollection.whereEqualTo("id", idRegistrado).get()
+                        .addOnSuccessListener { usuarioResult ->
+                            if (!usuarioResult.isEmpty) {
+                                Log.d("DEBUG", "Usuario encontrado en 'usuarios'")
+                                callback(true, usuarioCollection)
+                            } else {
+                                Log.d("DEBUG", "Usuario no encontrado en ninguna colección")
+                                callback(false, null)
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("ERROR", "Error buscando en 'usuarios'", e)
+                            callback(false, null)
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("ERROR", "Error buscando en 'trabajadores'", e)
+                callback(false, null)
+            }
+    }
+
+
+    fun agregar_vinucaldo(idRegistrado: String, context: Context) {
+        val dispositivo = "${Build.MANUFACTURER} ${Build.MODEL}"
+        Log.d("DEBUG", "Iniciando proceso de vinculación para ID: $idRegistrado")
+        Log.d("DEBUG", "Dispositivo detectado: $dispositivo")
+
+        encotrar_user(idRegistrado) { exi, coleccion ->
+            if (exi && coleccion != null) {
+                Log.d("DEBUG", "Usuario encontrado, preparando datos para guardar")
+
+                val hashMap = hashMapOf<String, Any>(
+                    "dispositivo" to dispositivo,
+                    "fecha_registro" to mostrarFechaDialog_horaDialog.obtenerFechaActual(),
+                    "hora_registro" to mostrarFechaDialog_horaDialog.obtenerHoraActual()
+                )
+
+                Log.d("DEBUG", "Subiendo datos del dispositivo a Firestore")
+                coleccion.document(idRegistrado).collection("vinculados").add(hashMap)
+                    .addOnSuccessListener { res ->
+                        Log.d("DEBUG", "Dispositivo vinculado correctamente con ID: ${res.id}")
+                        Toast.makeText(context, "Dispositivo vinculado", Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("ERROR", "Error al subir dispositivo vinculado", e)
+                    }
+            } else {
+                Log.e("ERROR", "No se encontró el usuario con ID: $idRegistrado")
+            }
+        }
+    }
+
+
+}
