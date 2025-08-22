@@ -1,0 +1,137 @@
+package com.geinzz.geinzwork.ui.adapters.ui.pantallas.login
+
+import android.graphics.drawable.Icon
+import android.util.Log
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Button
+import androidx.compose.material.ExtendedFloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import coil3.Image
+
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import coil3.request.error
+import coil3.request.placeholder
+import com.geinzz.geinzwork.R
+import com.geinzz.geinzwork.ui.adapters.ui.COMP_principal_filtrado.texto_generico_one_line
+import com.geinzz.geinzwork.ui.adapters.ui.dialog_general.spacer_vertical
+import com.geinzz.geinzwork.utils.constantes.localizate_geinz.constantes_lista_localidades
+import kotlinx.coroutines.delay
+import org.w3c.dom.Text
+
+@Composable
+fun iniciar_Seccion(
+    listener_Crear_cuenta: () -> Unit,
+    listener_iniciar_seccion: () -> Unit,
+    listener_continuar_con_google: () -> Unit
+) {
+    val lista_img = constantes_lista_localidades.lista_img_local
+    var currentImageIndex by remember { mutableStateOf(0) }
+    var transitionState by remember { mutableStateOf(0f) }
+
+    LaunchedEffect(true) {
+        while (true) {
+            delay(5000)
+            // Cambio de imagen
+            currentImageIndex = (currentImageIndex + 1) % lista_img.size
+            delay(500)
+            transitionState = 1f
+        }
+    }
+
+    val animatedOpacity by animateFloatAsState(targetValue = transitionState)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(lista_img[currentImageIndex])
+                .crossfade(true) // Aquí está activado el crossfade para una transición de imagen más suave.
+                .build(),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(alpha = animatedOpacity),
+            contentScale = ContentScale.Crop
+        )
+
+        crear_cuenta(
+            Modifier.align(Alignment.BottomCenter).padding(bottom = 20.dp),
+            { listener_Crear_cuenta() },
+            { listener_iniciar_seccion() },
+            { listener_continuar_con_google() }
+        )
+    }
+}
+
+
+@Composable
+fun crear_cuenta(
+    modifier: Modifier,
+    listener_Crear_cuenta: () -> Unit,
+    listener_iniciar_seccion: () -> Unit,
+    listener_continuar_con_google: () -> Unit
+) {
+    Column(modifier = modifier) {
+        btn_secciones("Iniciar seccion", R.drawable.sin_item_carrito) { listener_iniciar_seccion() }
+        spacer_vertical(10.dp)
+        btn_secciones(
+            "Continuar con Google",
+            R.drawable.gmail_img
+        ) { listener_continuar_con_google() }
+        spacer_vertical(10.dp)
+        crear_cuenta(listener_Crear_cuenta)
+    }
+}
+
+@Composable
+fun btn_secciones(texto: String, icono: Int = 0, listener_btn: () -> Unit) {
+    ExtendedFloatingActionButton(
+        onClick = { listener_btn() },
+        text = { texto_generico_one_line(texto) },
+        shape = RoundedCornerShape(50),
+        icon = { Icon(painter = painterResource(icono), contentDescription = "", modifier = Modifier.size(20.dp)) }
+    )
+}
+
+@Composable
+fun crear_cuenta(listner_crear_cuenta: () -> Unit) {
+    Text(
+        text = "Crear cuenta",
+        modifier = Modifier.clickable { listner_crear_cuenta() },
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
