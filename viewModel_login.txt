@@ -1,0 +1,9 @@
+package com.geinzz.geinzwork.viewModels
+
+import androidx.lifecycle.ViewModel
+
+class viewModel_login : ViewModel(){
+    private fun registrar_user(){
+
+    }
+}
