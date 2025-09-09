@@ -1,12 +1,12 @@
 package com.geinzz.geinzwork.viewModels
 
-import android.R
 import android.content.Context
-import android.util.Log
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
 import com.geinzz.geinzwork.data.model.localizate_geinz.login_geinz.login_google
 import com.geinzz.geinzwork.data.model.localizate_geinz.login_geinz.login_user
 import com.geinzz.geinzwork.model.repo_login_user
@@ -14,10 +14,13 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.model.mutation.ArrayTransformOperation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class viewModel_login_user : ViewModel() {
+    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
 
     val repo_agregar_user = repo_login_user()
 
@@ -33,10 +36,6 @@ class viewModel_login_user : ViewModel() {
     val registrado_boolean: LiveData<Boolean> get() = _registrado
 
 
-    private val google_provider = MutableLiveData<Boolean>()
-    val _google_provider: LiveData<Boolean> get() = google_provider
-
-
     private val _registrado_google = MutableLiveData<Boolean>()
 
     val registrado_google: LiveData<Boolean> get() = _registrado_google
@@ -47,128 +46,180 @@ class viewModel_login_user : ViewModel() {
     private val correo_exist = MutableLiveData<Boolean>()
     val _correo_exist: LiveData<Boolean> get() = correo_exist
 
-
-    fun agregar_user(login_user: login_user, context: Context) {
-        try {
-            repo_agregar_user.agregar_user(login_user, context) { registrado ->
-                _registrado.value = registrado
-            }
-        } catch (e: Exception) {
-            _registrado.value = false
-        }
-    }
-
-    fun agregar_user_google(login_google: login_google, context: Context) {
-        try {
-            repo_agregar_user.agregar_user_google(login_google, context) { cuenta_creada ->
-                _registrado_google.value = cuenta_creada
-            }
-        } catch (e: Exception) {
-            _registrado_google.value = false
-        }
-    }
-
-    fun loginWithGoogle(idToken: String?) {
-        _mostrarCarga.value = true
-        _loginStateCamposInicial.value = LoginState_inicio.Loading
-
-        val credential = GoogleAuthProvider.getCredential(idToken, null)
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Log.d("correo_compatile","1234")
-                    val user = auth.currentUser
-                    _loginStateCamposInicial.value=LoginState_inicio.Succes(
-                        user?.email,
-                        user?.displayName,
-                        user?.photoUrl.toString(),
-                        "google")
-                    viewModelScope.launch {
-                        delay(10_000)
-                        _mostrarCarga.value = false
-                    }
-                } else {
-                    Log.d("correo_compatile","4321")
-                    _mostrarCarga.value = false
-                    _loginStateCamposInicial.value=LoginState_inicio.error("",task.exception?.message.toString())
-                }
-            }
-    }
-
-
     private val _mostrarCarga = MutableLiveData(false)
     val mostrarCarga: LiveData<Boolean> = _mostrarCarga
 
-    fun logear_user(correo: String, password: String) {
-        _mostrarCarga.value = true
-        when {
-            correo.isBlank() && password.isBlank() -> {
+    fun agregar_user(login_user: login_user, context: Context) {
+        viewModelScope.launch {
+            _mostrarCarga.value = true // mostrar loader desde ya
+            try {
+                repo_agregar_user.agregar_user(login_user, context) { registrado ->
+                    // 🔹 esperar medio segundo antes de actualizar el estado
+                    viewModelScope.launch {
+                        delay(5000)
+                        _loginStateCamposInicial.value = LoginState_inicio.Succes("", "", "", "")
+                        delay(5000)
+                        _registrado.value = registrado
+                        _mostrarCarga.value = false // ocultar loader
+                    }
+                }
+            } catch (e: Exception) {
+                _registrado.value = false
                 _mostrarCarga.value = false
-                _loginStateCamposInicial.value =
-                    LoginState_inicio.error("correo_no_existe", "Correo y contraseña no pueden estar vacíos")
-                return
-            }
-            correo.isBlank() -> {
-                _mostrarCarga.value = false
-                _loginStateCamposInicial.value =
-                    LoginState_inicio.error("correo_no_existe", "El correo no puede estar vacío")
-                return
-            }
-
-            password.isBlank() -> {
-                _mostrarCarga.value = false
-                _loginStateCamposInicial.value =
-                    LoginState_inicio.error("pass_incorrecta", "La contraseña no puede estar vacía")
-                return
+                _loginStateCamposInicial.value = LoginState_inicio.error("", "")
             }
         }
+    }
 
-        _loginStateCamposInicial.value = LoginState_inicio.Loading
+
+    fun agregar_user_google(login_google: login_google, context: Context) {
+        _mostrarCarga.value = true
         try {
-            repo_agregar_user.logear_user(correo, password) { registrado, texto_registrado ->
-                if (registrado) {
-                    val user = auth.currentUser
-                    _loginStateCamposInicial.value = LoginState_inicio.Succes(
-                        email = "",
-                        name = user?.displayName,
-                        photoUrl = user?.photoUrl?.toString(),"normal"
-                    )
-                    viewModelScope.launch {
-                        delay(10_000)
-                        _mostrarCarga.value = false
+            repo_agregar_user.agregar_user_google(login_google, context) { cuenta_creada ->
+                viewModelScope.launch {
+                    if (cuenta_creada) {  // ✅ solo si la cuenta se creó correctamente
+                        delay(5000)        // mostrar loader
+                        _loginStateCamposInicial.value = LoginState_inicio.Succes("", "", "", "")
+                        delay(5000)
+                        _registrado_google.value = true
+                    } else {
+                        _registrado_google.value = false
+                        _loginStateCamposInicial.value = LoginState_inicio.error("", "")
                     }
-                } else {
-                    when (texto_registrado) {
-                        "correo_no_existe" -> {
-                            _loginStateCamposInicial.value =
-                                LoginState_inicio.error(
-                                    texto_registrado,
-                                    "El correo no esta registrado, primero crea una cuenta"
-                                )
-                            _mostrarCarga.value = false
-                        }
-
-                        "pass_incorrecta" -> {
-                            _loginStateCamposInicial.value =
-                                LoginState_inicio.error(
-                                    texto_registrado,
-                                    "La contraseña es incorrecta"
-                                )
-                            _mostrarCarga.value = false
-                        }
-
-                        else -> {
-                            _loginStateCamposInicial.value =
-                                LoginState_inicio.error("", "Error desconocido")
-                            _mostrarCarga.value = false
-                        }
-                    }
+                    _mostrarCarga.value = false
                 }
             }
         } catch (e: Exception) {
-            _loginStateCamposInicial.value =
-                LoginState_inicio.error("", "Error desconocido")
+            _registrado_google.value = false
             _mostrarCarga.value = false
+            _loginStateCamposInicial.value = LoginState_inicio.error("", "")
+        }
+    }
+
+
+    fun loginWithGoogle(
+        navController: NavController,
+        idToken: String?,
+        listener_Crear_cuenta: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _mostrarCarga.value = true
+            _loginStateCamposInicial.value = LoginState_inicio.Loading
+
+            try {
+                val credential = GoogleAuthProvider.getCredential(idToken, null)
+                val authResult =
+                    auth.signInWithCredential(credential).await()  // 🔹 await de Firebase Auth
+                val user = authResult.user
+                val correo = user?.email ?: ""
+
+                val existe =
+                    repo_agregar_user.verificar_cuenta_google(correo) // suspend function que chequea Firestore
+                delay(5000)
+                if (existe) {
+                    _loginStateCamposInicial.value = LoginState_inicio.Succes(
+                        correo,
+                        user?.displayName,
+                        user?.photoUrl.toString(),
+                        "google"
+                    )
+                    navController.navigate("pantalla_principal") {
+                        popUpTo("login_principal") { inclusive = true }
+                    }
+                } else {
+                    listener_Crear_cuenta(correo)
+                }
+
+            } catch (e: Exception) {
+                _loginStateCamposInicial.value = LoginState_inicio.error("", e.message.toString())
+            } finally {
+                _mostrarCarga.value = false
+            }
+        }
+    }
+
+
+    fun logear_user(navController: NavController, correo: String, password: String) {
+        viewModelScope.launch {
+            _mostrarCarga.value = true
+
+            // 🔹 Validaciones iniciales
+            when {
+                correo.isBlank() && password.isBlank() -> {
+                    _loginStateCamposInicial.value =
+                        LoginState_inicio.error(
+                            "correo_no_existe",
+                            "Correo y contraseña no pueden estar vacíos"
+                        )
+                    _mostrarCarga.value = false
+                    return@launch
+                }
+
+                correo.isBlank() -> {
+                    _loginStateCamposInicial.value =
+                        LoginState_inicio.error(
+                            "correo_no_existe",
+                            "El correo no puede estar vacío"
+                        )
+                    _mostrarCarga.value = false
+                    return@launch
+                }
+
+                password.isBlank() -> {
+                    _loginStateCamposInicial.value =
+                        LoginState_inicio.error(
+                            "pass_incorrecta",
+                            "La contraseña no puede estar vacía"
+                        )
+                    _mostrarCarga.value = false
+                    return@launch
+                }
+            }
+
+            _loginStateCamposInicial.value = LoginState_inicio.Loading
+
+            try {
+                // 🔹 Llamada suspend del repositorio
+                val (registrado, texto_registrado) = repo_agregar_user.logear_user(correo, password)
+
+                if (registrado) {
+                    val user = auth.currentUser
+                    _loginStateCamposInicial.value = LoginState_inicio.Succes(
+                        email = correo,
+                        name = user?.displayName,
+                        photoUrl = user?.photoUrl?.toString(),
+                        proveedor = "normal"
+                    )
+                    navController.navigate("pantalla_principal") {
+                        popUpTo("login_principal") { inclusive = true }
+                    }
+
+                } else {
+
+                    when (texto_registrado) {
+                        "correo_no_existe" -> _loginStateCamposInicial.value =
+                            LoginState_inicio.error(
+                                texto_registrado,
+                                "El correo no está registrado, primero crea una cuenta"
+                            )
+
+                        "pass_incorrecta" -> _loginStateCamposInicial.value =
+                            LoginState_inicio.error(
+                                texto_registrado,
+                                "La contraseña es incorrecta"
+                            )
+
+                        else -> _loginStateCamposInicial.value =
+                            LoginState_inicio.error("", "Error desconocido")
+                    }
+
+                }
+            } catch (e: Exception) {
+                _loginStateCamposInicial.value =
+                    LoginState_inicio.error("", "Error desconocido")
+            } finally {
+                _mostrarCarga.value = false
+            }
         }
     }
 
@@ -176,9 +227,19 @@ class viewModel_login_user : ViewModel() {
     fun resetLoginState() {
         _loginStateCamposInicial.value = null
     }
+
     fun logout() {
-        _loginStateCamposInicial.value = LoginState_inicio.LoggedOut
+        viewModelScope.launch {
+            _mostrarCarga.value = true
+            _loginStateCamposInicial.value = LoginState_inicio.Loading
+            firebaseAuth.signOut()
+            delay(5000)
+            _loginStateCamposInicial.value = LoginState_inicio.LoggedOut
+            delay(5000)
+            _mostrarCarga.value = false
+        }
     }
+
 
     fun verificar_exist_nombre_user(nombre_user: String) {
         viewModelScope.launch {
@@ -195,26 +256,23 @@ class viewModel_login_user : ViewModel() {
     fun verificar_exist_correo(correo: String) {
         viewModelScope.launch {
             try {
-                repo_agregar_user.buscar_correo(correo) { existe ->
-                    correo_exist.value = existe
-                }
+                val existe = repo_agregar_user.buscar_correo_suspense(correo)
+                correo_exist.value = existe
+
             } catch (e: Exception) {
                 correo_exist.value = false
             }
         }
     }
 
-     fun verificar_cuenta_google_provider(correo: String, exista: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            try {
-                repo_agregar_user.validar_cuenta_existente_provider_google(correo) { existe ->
-                    exista(existe)
-                }
-            } catch (e: Exception) {
-                exista(false)
-            }
+    suspend fun verificar_cuenta_google_provider(correo: String): Boolean {
+        return try {
+            repo_agregar_user.verificar_cuenta_google(correo)
+        } catch (e: Exception) {
+            false
         }
     }
+
 
     fun setLoading() {
         _loginState.value = LoginState.Loading
@@ -242,9 +300,14 @@ sealed class LoginState {
 }
 
 sealed class LoginState_inicio {
-    data class Succes(val email: String?,val name: String?, val photoUrl: String?,val proveedor: String?) : LoginState_inicio()
-    data class error(val tipo: String, val msje: String) : LoginState_inicio()
+    data class Succes(
+        val email: String?,
+        val name: String?,
+        val photoUrl: String?,
+        val proveedor: String?
+    ) : LoginState_inicio()
 
+    data class error(val tipo: String, val msje: String) : LoginState_inicio()
     object Loading : LoginState_inicio()
     object LoggedOut : LoginState_inicio()
 }
