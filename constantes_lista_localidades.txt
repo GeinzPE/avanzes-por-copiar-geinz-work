@@ -1,3 +1,4 @@
+
 package com.geinzz.geinzwork.utils.constantes.localizate_geinz
 
 import android.content.Context
@@ -42,6 +43,7 @@ object constantes_lista_localidades {
             "jueves", "viernes", "sábado", "domingo"
         )
 
+    val lista_localidad = listOf("Barranca", "Supe", "paramonga", "pativilca", "Puerto supe")
 
     fun obtenerMetodoContacto(
         metodo: String,
@@ -63,6 +65,33 @@ object constantes_lista_localidades {
             numero
         }
     }
+    fun getCategoriaIcon(categoria: String): String {
+        return when (categoria.lowercase()) {
+            "bancos y servicios financieros" -> "🏦"
+            "belleza" -> "💅"
+            "comida y restaurantes" -> "🍽️"
+            "deporte y bienestar" -> "🏋️"
+            "educacion y librerias" -> "📚"
+            "entretenimiento y recreacion" -> "🎭"
+            "grifos y estaciones" -> "⛽"
+            "hogar y ferreteria" -> "🛠️"
+            "hospedaje y entretenimiento nocturno" -> "🏨"
+            "jardineria y plantas" -> "🌱"
+            "lavanderias y tintorerias" -> "👕"
+            "mascotas y animales" -> "🐾"
+            "mecanica y autoservicios" -> "🔧"
+            "minimarkets y bodegas" -> "🛒"
+            "moda y estilo" -> "👗"
+            "salud y farmacias" -> "💊"
+            "servicios de encomienda y envios" -> "📦"
+            "servicios tecnicos y reparaciones" -> "🔌"
+            "supermercados y tiendas grandes" -> "🏬"
+            "tecnologia y electronica" -> "💻"
+            "transporte y terminales" -> "🚌"
+            else -> "🏷️" // genérico
+        }
+    }
+
 
     fun verificarSiEstaAbierto(lista_horarios_por_tienda: List<horario_Dia>): Boolean {
         return try {
@@ -209,7 +238,7 @@ object constantes_lista_localidades {
 
 
     val chips_filtrado_busqueda=listOf(
-        "Todos","Restaurantes","Hoteles"
+        "Todos","comida y restaurantes","Hoteles","Lugares"
     )
 
 
