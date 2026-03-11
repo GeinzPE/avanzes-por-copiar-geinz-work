@@ -1,0 +1,26 @@
+package com.geinzz.geinzwork.data.model.dataclass_inmobiliaria
+
+data class dataclass_geinz_inmobiliaria_principal(
+    val id: String = "",
+    val lista_img: List<String> = emptyList(),
+    val nombre_inmobiliara: String = "",
+    val descripcion: String = "",
+    val precio_String: Double = 0.0,
+    val localidad: String = "",
+
+)
+
+data class datos_completos_propiedades(
+    val datos_completo: dataclass_geinz_inmobiliaria_principal,
+    val tipo_operacion: String,
+    val tipo_propiedad: String,
+    val banos: String,
+    val estacionamiento: String, val abitaciones: String
+)
+
+data class datos_geolocalizables(
+    val latitud: Double,
+    val longitud: Double,
+    val direccion:String,
+    val refencia: String
+)

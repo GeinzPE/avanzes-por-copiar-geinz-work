@@ -1,0 +1,63 @@
+package com.geinzz.geinzwork.viewModels
+
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.geinzz.geinzwork.data.model.dataclass_inmobiliaria.dataclass_geinz_inmobiliaria_principal
+import com.geinzz.geinzwork.model.repo_inmobiliaria
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+class viewmodel_inmobiliaria : ViewModel() {
+    val instarepo = repo_inmobiliaria()
+
+    private val _estado_carga_inmubles_principales =
+        MutableStateFlow<estado_carga_principal_immubles>(estado_carga_principal_immubles.idle)
+
+    val estado_carga_inmuebles_principales: StateFlow<estado_carga_principal_immubles> =
+        _estado_carga_inmubles_principales
+
+
+    fun obtener_inmubles_dados(localidad_select: String) {
+        viewModelScope.launch {
+            _estado_carga_inmubles_principales.value = estado_carga_principal_immubles.loading
+            try {
+                val lista_estado_Carga_inmuebles =
+                    instarepo.obtener_propiedades_filtrados(localidad_select)
+
+                if (lista_estado_Carga_inmuebles.isNotEmpty()) {
+                    _estado_carga_inmubles_principales.value =
+                        estado_carga_principal_immubles.succes(lista_estado_Carga_inmuebles)
+                } else {
+                    _estado_carga_inmubles_principales.value =
+                        estado_carga_principal_immubles.empty("No se encontraron datos")
+                }
+
+            } catch (e: Exception) {
+                Log.d("error_inmubles", "error al obtner los inmuebles")
+            }
+        }
+    }
+
+
+    fun obtner_lugares_cercanos_a_un_inmueble(lat_lugar: Double, lng_luagr: Double){
+        viewModelScope.launch {
+            try {
+
+            }catch (e: Exception){
+
+            }
+        }
+    }
+
+    sealed class estado_carga_principal_immubles {
+        data class succes(val lista_inmuebles: List<dataclass_geinz_inmobiliaria_principal>) :
+            estado_carga_principal_immubles()
+        data class empty(val texto: String) : estado_carga_principal_immubles()
+        data class error(val texto: String) : estado_carga_principal_immubles()
+        object idle : estado_carga_principal_immubles()
+        object loading : estado_carga_principal_immubles()
+    }
+
+}

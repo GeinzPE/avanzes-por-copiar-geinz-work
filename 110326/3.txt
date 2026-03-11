@@ -1,0 +1,55 @@
+package com.geinzz.geinzwork.model
+
+import com.firebase.geofire.core.GeoHash
+import com.geinzz.geinzwork.data.model.dataclass_inmobiliaria.dataclass_geinz_inmobiliaria_principal
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+import kotlin.collections.emptyList
+
+class repo_inmobiliaria {
+    private val db = FirebaseFirestore.getInstance()
+
+    suspend fun obtener_propiedades_filtrados(localidad: String): List<dataclass_geinz_inmobiliaria_principal> {
+
+        val ref = db.collection("Tiendas")
+            .document(localidad)
+            .collection("geinz_inmobiliaria")
+            .get()
+            .await()
+
+        return ref.map { datos ->
+            dataclass_geinz_inmobiliaria_principal(
+                id = datos.getString("id") ?: "",
+                lista_img = datos.get("listaImg") as? List<String> ?: emptyList(),
+                nombre_inmobiliara = datos.getString("nombre") ?: "",
+                descripcion = datos.getString("descripcion") ?: "",
+                precio_String = datos.getDouble("precioid") ?: 0.0,
+                localidad = datos.getString("ciudad") ?: ""
+            )
+        }
+
+    }
+
+    suspend fun obtener_negocios_lugaers_cercanos(
+        lat: Double,
+        lng: Double,
+        localidad: String
+    ): List<DocumentSnapshot> {
+
+        val userGeohash = GeoHash.encodeHash(lat, lng, 6)
+        val prefix = userGeohash.substring(0, 5)
+
+        val tiendas = db.collection("Tiendas")
+            .document(localidad)
+            .collection(localidad)
+            .orderBy("geohash")
+            .startAt(prefix)
+            .endAt(prefix + "\uf8ff")
+            .get()
+            .await()
+
+        return tiendas.documents
+    }
+}
