@@ -1,0 +1,88 @@
+package com.geinzz.geinzwork.viewModels
+
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.geinzz.geinzwork.data.model.agregar_inmubles
+import com.geinzz.geinzwork.model.repo_agregar_inmubles
+import com.geinzz.geinzwork.model.repo_inmobiliaria
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+
+class viewmodel_agregar_propiedades : ViewModel() {
+
+    private val instacia_lures_cercanos = repo_inmobiliaria()
+
+    private val instania_repo_agregar_inmubes = repo_agregar_inmubles()
+
+    suspend fun obtener_lugares_cercanos(
+        lat: Double,
+        lng: Double,
+        localidad: String
+    ): List<String> = coroutineScope {
+        Log.d("dada","$lat,$lng,$localidad")
+
+        try {
+            val f1 = async {
+                instacia_lures_cercanos.obtener_cantidad_lugares_cercanos(lat, lng, localidad)
+                    .take(2)
+                    .map { it.nombre } // o el campo que tenga el nombre
+            }
+            val f2 = async {
+                instacia_lures_cercanos.obtner_lugares_seguros_cerca(lat, lng, localidad)
+                    .take(2)
+                    .map { it.nombre }
+            }
+            val f3 = async {
+                instacia_lures_cercanos.obtner_lugares_seguros_cerca_turismo(lat, lng, localidad)
+                    .take(2)
+                    .map { it.nombre }
+            }
+            val f4 = async {
+                instacia_lures_cercanos.obtener_servicios_esenciales(lat, lng, localidad)
+                    .take(2)
+                    .map { it.nombre }
+            }
+
+            f1.await() + f2.await() + f3.await() + f4.await()
+
+        } catch (e: Exception) {
+            Log.d("Error_obtner", "error al obtener los lugares cercanos $e")
+            emptyList()
+        }
+    }
+
+    fun generar_titulo_para_Casa(
+        tipo_realizado: String,
+        tipo_operacion: String,
+        nombre_Calle: String,
+        localidad: String
+    ) {
+        viewModelScope.launch {
+            try {
+                instania_repo_agregar_inmubes.generar_titulo_propiedad(
+                    tipo_realizado,
+                    tipo_operacion,
+                    nombre_Calle,
+                    localidad
+                )
+            } catch (e: Exception) {
+                Log.d("error_datos", "erroo al generarar $e")
+            }
+        }
+    }
+
+    fun agregar_descripcion_para_casa(titulo: String, lista_lugares: List<String>) {
+        viewModelScope.launch {
+            try {
+                instania_repo_agregar_inmubes.generar_descripcion(titulo, lista_lugares)
+            } catch (e: Exception) {
+                Log.d("error_datos2", "erroo al generarar $e")
+
+            }
+        }
+
+    }
+}
+
