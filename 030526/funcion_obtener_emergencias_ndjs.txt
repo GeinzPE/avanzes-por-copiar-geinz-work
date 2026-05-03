@@ -1,0 +1,36 @@
+exports.obtener_lugares_emergencia = onRequest(async (req, res) => {
+  try {
+    const { categoria } = req.body;
+
+    let filters = "";
+    if (categoria) {
+      filters = `categoria:"${categoria}"`;
+    }
+
+    const result = await index.search("", {
+      filters,
+      hitsPerPage: 20,
+    });
+
+    const data = result.hits.map((d) => ({
+      id: d.id ?? d.objectID,
+      c: d.categoria ?? null,
+      n: d.nombre ?? null,
+      num: {
+        llamada: d.llamada ? [d.llamada] : [],
+        whatsapp: d.whatsapp ? [d.whatsapp] : [],
+      },
+      ub: d.ubicacion
+        ? {
+            lat: d.ubicacion.latitud,
+            lng: d.ubicacion.longitud,
+          }
+        : null,
+    }));
+
+    res.status(200).json(data);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "error interno" });
+  }
+});
